@@ -4,7 +4,7 @@ import {ComponentFixture, TestBed, async, inject, fakeAsync, tick} from '@angula
 import {Directionality} from '@angular/cdk/bidi';
 import {dispatchKeyboardEvent, createKeyboardEvent, dispatchEvent} from '@angular/cdk/testing';
 import {ESCAPE, A} from '@angular/cdk/keycodes';
-import {CdkConnectedOverlay, OverlayModule, CdkOverlayOrigin} from './index';
+import {Overlay, CdkConnectedOverlay, OverlayModule, CdkOverlayOrigin} from './index';
 import {OverlayContainer} from './overlay-container';
 import {
   ConnectedOverlayPositionChange,
@@ -14,6 +14,7 @@ import {FlexibleConnectedPositionStrategy} from './position/flexible-connected-p
 
 
 describe('Overlay directives', () => {
+  let overlay: Overlay;
   let overlayContainer: OverlayContainer;
   let overlayContainerElement: HTMLElement;
   let fixture: ComponentFixture<ConnectedOverlayDirectiveTest>;
@@ -32,8 +33,9 @@ describe('Overlay directives', () => {
     fixture.detectChanges();
   });
 
-  beforeEach(inject([OverlayContainer], (oc: OverlayContainer) => {
+  beforeEach(inject([OverlayContainer, Overlay], (oc: OverlayContainer, o: Overlay) => {
     overlayContainer = oc;
+    overlay = o;
     overlayContainerElement = oc.getContainerElement();
   }));
 
@@ -115,6 +117,26 @@ describe('Overlay directives', () => {
     expect(overlayContainerElement.textContent!.trim()).toBe('',
         'Expected overlay to have been detached.');
     expect(event.defaultPrevented).toBe(true);
+  });
+
+  it('can change positionStrategy via input', () => {
+    const expectedPositionStrategy =
+        overlay.position()
+            .flexibleConnectedTo(document.body)
+            .withFlexibleDimensions(true)
+            .withPositions([
+              {originX: 'start', originY: 'top', overlayX: 'start', overlayY: 'top'},
+            ]);
+    fixture.componentInstance.isOpen = true;
+    fixture.componentInstance.positionStrategy = expectedPositionStrategy;
+    fixture.detectChanges();
+
+    const testComponent: ConnectedOverlayDirectiveTest = fixture.debugElement.componentInstance;
+    const overlayDirective = testComponent.connectedOverlayDirective;
+    const actualPositionStrategy = overlayDirective.overlayRef.getConfig().positionStrategy as
+        FlexibleConnectedPositionStrategy;
+
+    expect(expectedPositionStrategy).toBe(actualPositionStrategy);
   });
 
   it('should not close when pressing escape with a modifier', () => {
@@ -547,6 +569,7 @@ describe('Overlay directives', () => {
   <ng-template cdk-connected-overlay
             [cdkConnectedOverlayOpen]="isOpen"
             [cdkConnectedOverlayWidth]="width"
+            [cdkConnectedOverlayPositionStrategy]="positionStrategy"
             [cdkConnectedOverlayHeight]="height"
             [cdkConnectedOverlayOrigin]="triggerOverride || trigger"
             [cdkConnectedOverlayHasBackdrop]="hasBackdrop"
@@ -580,6 +603,7 @@ class ConnectedOverlayDirectiveTest {
   minWidth: number | string;
   minHeight: number | string;
   offsetX: number;
+  positionStrategy: FlexibleConnectedPositionStrategy;
   offsetY: number;
   triggerOverride: CdkOverlayOrigin;
   hasBackdrop: boolean;
